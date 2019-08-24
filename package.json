@@ -1,0 +1,77 @@
+{
+  "name": "jupyter-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@jupyterlab/application": "^1.0.3",
+    "@jupyterlab/apputils": "^1.0.3",
+    "@jupyterlab/cells": "^1.0.3",
+    "@jupyterlab/codemirror": "^1.0.3",
+    "@jupyterlab/completer": "^1.0.3",
+    "@jupyterlab/coreutils": "^3.0.0",
+    "@jupyterlab/docmanager": "^1.0.3",
+    "@jupyterlab/docregistry": "^1.0.3",
+    "@jupyterlab/mathjax2": "^1.0.0",
+    "@jupyterlab/notebook": "^1.0.3",
+    "@jupyterlab/rendermime": "^1.0.3",
+    "@jupyterlab/services": "^4.0.1",
+    "@jupyterlab/theme-light-extension": "^1.0.3",
+    "@phosphor/commands": "^1.7.0",
+    "@phosphor/widgets": "^1.9.0",
+    "axios": "^0.19.0",
+    "codemirror": "^5.48.2",
+    "core-js": "^2.6.5",
+    "element-ui": "^2.10.1",
+    "interactjs": "^1.4.0-rc.13",
+    "markdown": "^0.5.0",
+    "node-sass": "^4.12.0",
+    "sass-loader": "^7.1.0",
+    "vue": "^2.6.10",
+    "vue-codemirror": "^4.0.6",
+    "vue-router": "^3.0.3",
+    "vuex": "^3.0.1"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "^3.1.1",
+    "@vue/cli-plugin-eslint": "^3.1.1",
+    "@vue/cli-service": "^3.1.1",
+    "babel-eslint": "^10.0.1",
+    "eslint": "^5.16.0",
+    "eslint-plugin-vue": "^5.0.0",
+    "vue-template-compiler": "^2.6.10"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "rules": {
+      "indent": [
+        2,
+        4
+      ],
+      "no-console": "off"
+    },
+    "parserOptions": {
+      "parser": "babel-eslint"
+    }
+  },
+  "postcss": {
+    "plugins": {
+      "autoprefixer": {}
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions"
+  ]
+}

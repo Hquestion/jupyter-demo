@@ -6,6 +6,7 @@
 
 <script>
 import emitter from '../../../mixins/emitter';
+import interact from 'interactjs';
 export default {
     name: "Panel",
     componentName: 'Panel',
@@ -58,19 +59,12 @@ export default {
         async updateChildren() {
             await this.ready;
             const children = this.$children;
-            if (children.length === 1) {
-                children.width = this.width;
-                children.height = this.height;
-                children.left = 0;
-                children.top = 0;
-                return;
-            }
-            if (children.length > 1) {
+            if (children.length >= 1) {
                 const weights = children.map(child => child.weight);
                 let total = 0;
                 weights.reduce((a, b) => total = a + b);
                 let assigned = 0;
-                children.forEach(child => {
+                children.forEach((child, index) => {
                     // 垂直的分配高度，水平的分配宽度
                     if (this.childDirection === 'vertical') {
                         child.width = this.width;
@@ -78,13 +72,36 @@ export default {
                         child.top = assigned;
                         child.left = 0;
                         assigned += child.height;
+                        if (index < children.length) {
+                            interact(child.$el)
+                                .resizable({
+                                    edges: {
+                                        top: false,
+                                        left: false,
+                                        bottom: true,
+                                        right: false
+                                    }
+                                });
+                        }
                     } else {
                         child.width = this.width * child.weight / total;
                         child.height = this.height;
                         child.left = assigned;
                         child.top = 0;
                         assigned += child.width;
+                        if (index < children.length) {
+                            interact(child.$el)
+                                .resizable({
+                                    edges: {
+                                        top: false,
+                                        left: false,
+                                        bottom: false,
+                                        right: true
+                                    }
+                                });
+                        }
                     }
+
                 });
             }
         },

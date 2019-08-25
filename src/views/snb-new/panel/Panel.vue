@@ -22,9 +22,17 @@ export default {
         },
         initWidth: {
             type: Number,
-            default: 0
+            default: -1
+        },
+        initHeight: {
+            type: Number,
+            default: -1
         },
         minWidth: {
+            type: Number,
+            default: 20
+        },
+        minHeight: {
             type: Number,
             default: 20
         }
@@ -60,15 +68,25 @@ export default {
             await this.ready;
             const children = this.$children;
             if (children.length >= 1) {
-                const weights = children.map(child => child.weight);
-                let total = 0;
-                weights.reduce((a, b) => total = a + b);
+                const initWidths = children.map(child => child.initWidth);
+                const initHeights = children.map(child => child.initHeight);
+                let assignedWidth = 0, assignedHeight = 0;
+                initWidths.forEach(w => {
+                    assignedWidth = (w > -1) ? (assignedWidth + w) : assignedWidth
+                });
+                initHeights.forEach(h => {
+                    assignedHeight = (h > -1) ? (assignedHeight + h) : assignedHeight;
+                });
                 let assigned = 0;
                 children.forEach((child, index) => {
                     // 垂直的分配高度，水平的分配宽度
                     if (this.childDirection === 'vertical') {
+                        let total = 0, canAssignedHeight = (this.height - assignedHeight) || 0;
+                        let toAssignedChildren = children.filter(item => item.initHeight < 0).map(item => item.weight);
+                        toAssignedChildren.reduce((a, b) => total = a + b);
+
                         child.width = this.width;
-                        child.height = this.height * child.weight / total;
+                        child.height = Math.max(child.minHeight, child.initHeight > -1 ? child.initHeight : canAssignedHeight * child.weight / total);
                         child.top = assigned;
                         child.left = 0;
                         assigned += child.height;
@@ -84,12 +102,16 @@ export default {
                                 });
                         }
                     } else {
-                        child.width = this.width * child.weight / total;
+                        let total = 0, canAssignedWidth = (this.width - assignedWidth) || 0;
+                        let toAssignedChildren = children.filter(item => item.initWidth < 0).map(item => item.weight);
+                        toAssignedChildren.reduce((a, b) => total = a + b);
+
+                        child.width = Math.max(child.minWidth, child.initWidth > -1 ? child.initWidth : canAssignedWidth * child.weight / total);
                         child.height = this.height;
                         child.left = assigned;
                         child.top = 0;
                         assigned += child.width;
-                        if (index < children.length) {
+                        if (index < children.length -1) {
                             interact(child.$el)
                                 .resizable({
                                     edges: {
@@ -98,7 +120,17 @@ export default {
                                         bottom: false,
                                         right: true
                                     }
-                                });
+                                })
+                                .on('resizemove', (e) => {
+                                    let dist = e.rect.width - child.width;
+                                    children[index+1].width = children[index+1].width - dist;
+                                    children[index+1].left = children[index+1].left + dist;
+
+                                    child.width = e.rect.width;
+
+                                    // this.updateChildren();
+                                })
+                            ;
                         }
                     }
 
@@ -125,7 +157,9 @@ export default {
         this.init();
         this.dispatch('Panel', 'panel-added', this);
         window.addEventListener('resize', this.handleResize);
-        this.ready = requestAnimationFrame(() => {});
+        requestAnimationFrame(() => {
+            this.ready = Promise.resolve();
+        });
     },
     beforeDestroy() {
         this.dispatch('Panel', 'panel-minus', this);

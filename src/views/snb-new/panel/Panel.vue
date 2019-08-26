@@ -1,15 +1,15 @@
 <template>
-    <div class="snb-panel" :style="rect">
+    <div class="resizable-panel" :style="rect">
         <slot></slot>
     </div>
 </template>
 
 <script>
-import emitter from '../../../mixins/emitter';
+import emitter from '@sdx/utils/src/mixins/emitter';
 import interact from 'interactjs';
 export default {
-    name: "Panel",
-    componentName: 'Panel',
+    name: 'ResizablePanel',
+    componentName: 'ResizablePanel',
     mixins: [emitter],
     props: {
         childDirection: {
@@ -35,11 +35,21 @@ export default {
         minHeight: {
             type: Number,
             default: 20
+        },
+        order: {
+            type: Number,
+            default: 1
+        },
+        fixed: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
         return {
-            ready: false,
+            ready: new Promise(resolve => {
+                this.resolve = resolve;
+            }),
             width: 0,
             height: 0,
             left: 0,
@@ -53,7 +63,7 @@ export default {
                 height: `${this.height}px`,
                 left: `${this.left}px`,
                 top: `${this.top}px`
-            }
+            };
         }
     },
     methods: {
@@ -65,14 +75,16 @@ export default {
             this.height = parentBox.height;
         },
         async updateChildren() {
-            await this.ready;
+            if (!this.isRootPanel()) {
+                await this.$parent.ready;
+            }
             const children = this.$children;
-            if (children.length >= 1) {
+            if (children.length >= 1 && children[0].$options.componentName === 'ResizablePanel') {
                 const initWidths = children.map(child => child.initWidth);
                 const initHeights = children.map(child => child.initHeight);
                 let assignedWidth = 0, assignedHeight = 0;
                 initWidths.forEach(w => {
-                    assignedWidth = (w > -1) ? (assignedWidth + w) : assignedWidth
+                    assignedWidth = (w > -1) ? (assignedWidth + w) : assignedWidth;
                 });
                 initHeights.forEach(h => {
                     assignedHeight = (h > -1) ? (assignedHeight + h) : assignedHeight;
@@ -83,14 +95,22 @@ export default {
                     if (this.childDirection === 'vertical') {
                         let total = 0, canAssignedHeight = (this.height - assignedHeight) || 0;
                         let toAssignedChildren = children.filter(item => item.initHeight < 0).map(item => item.weight);
-                        toAssignedChildren.reduce((a, b) => total = a + b);
+                        toAssignedChildren.forEach(item => total = total + item);
 
                         child.width = this.width;
-                        child.height = Math.max(child.minHeight, child.initHeight > -1 ? child.initHeight : canAssignedHeight * child.weight / total);
+                        if (!child.assigned) {
+                            child.height = Math.max(child.minHeight, child.initHeight > -1 ? child.initHeight : canAssignedHeight * child.weight / total);
+                        }
                         child.top = assigned;
                         child.left = 0;
+                        child.assigned = true;
                         assigned += child.height;
-                        if (index < children.length) {
+                        if (index < children.length - 1) {
+                            child.$el.style.borderBottom = '1px solid #dedede';
+                            let nextChild = children[index+1];
+                            if (child.fixed || nextChild.fixed) {
+                                return;
+                            }
                             interact(child.$el)
                                 .resizable({
                                     edges: {
@@ -99,19 +119,37 @@ export default {
                                         bottom: true,
                                         right: false
                                     }
+                                })
+                                .on('resizemove', (e) => {
+                                    let dist = e.rect.height - child.height;
+                                    let height = nextChild.height - dist;
+                                    if (height > nextChild.minHeight && e.rect.height > this.minHeight) {
+                                        nextChild.height = nextChild.height - dist;
+                                        nextChild.top = nextChild.top + dist;
+
+                                        child.height = e.rect.height;
+                                    }
                                 });
                         }
                     } else {
                         let total = 0, canAssignedWidth = (this.width - assignedWidth) || 0;
                         let toAssignedChildren = children.filter(item => item.initWidth < 0).map(item => item.weight);
-                        toAssignedChildren.reduce((a, b) => total = a + b);
+                        toAssignedChildren.forEach(item => total = total + item);
 
-                        child.width = Math.max(child.minWidth, child.initWidth > -1 ? child.initWidth : canAssignedWidth * child.weight / total);
+                        if (!child.assigned) {
+                            child.width = Math.max(child.minWidth, child.initWidth > -1 ? child.initWidth : canAssignedWidth * child.weight / total);
+                        }
                         child.height = this.height;
                         child.left = assigned;
                         child.top = 0;
+                        child.assigned = true;
                         assigned += child.width;
                         if (index < children.length -1) {
+                            child.$el.style.borderRight = '1px solid #dedede';
+                            let nextChild = children[index+1];
+                            if (child.fixed || nextChild.fixed) {
+                                return;
+                            }
                             interact(child.$el)
                                 .resizable({
                                     edges: {
@@ -123,12 +161,13 @@ export default {
                                 })
                                 .on('resizemove', (e) => {
                                     let dist = e.rect.width - child.width;
-                                    children[index+1].width = children[index+1].width - dist;
-                                    children[index+1].left = children[index+1].left + dist;
+                                    let width = nextChild.width - dist;
+                                    if (width > nextChild.minWidth && e.rect.width > this.minWidth) {
+                                        nextChild.width = nextChild.width - dist;
+                                        nextChild.left = nextChild.left + dist;
 
-                                    child.width = e.rect.width;
-
-                                    // this.updateChildren();
+                                        child.width = e.rect.width;
+                                    }
                                 })
                             ;
                         }
@@ -136,41 +175,55 @@ export default {
 
                 });
             }
+            requestAnimationFrame(() => {
+                this.resolve(true);
+            });
         },
         handleResize() {
             clearTimeout(this.timer);
             this.timer = setTimeout(() => {
                 this.init();
                 this.updateChildren();
-            }, 500);
+            }, 200);
+        },
+        isRootPanel() {
+            return !this.$parent || this.$parent.$options.componentName !== 'ResizablePanel';
         }
     },
-    async updated() {
-        await this.updateChildren();
+    updated() {
+        this.updateChildren();
     },
     created() {
         this.$on('panel-added', () => {
-            this.updateChildren();
+            clearTimeout(this.changeTimer);
+            this.changeTimer = setTimeout(() => {
+                this.updateChildren();
+            }, 500);
+        });
+        this.$on('panel-minus', () => {
+            clearTimeout(this.changeTimer);
+            this.changeTimer = setTimeout(() => {
+                this.updateChildren();
+            }, 500);
         });
     },
     mounted() {
-        this.init();
-        this.dispatch('Panel', 'panel-added', this);
+        if (this.isRootPanel()) {
+            this.init();
+        }
+        this.dispatch('ResizablePanel', 'panel-added', this);
         window.addEventListener('resize', this.handleResize);
-        requestAnimationFrame(() => {
-            this.ready = Promise.resolve();
-        });
     },
     beforeDestroy() {
-        this.dispatch('Panel', 'panel-minus', this);
+        this.dispatch('ResizablePanel', 'panel-minus', this);
         window.removeEventListener('resize', this.handleResize);
     }
-}
+};
 </script>
 
 <style lang="scss" scoped>
-    .snb-panel {
+    .resizable-panel {
         position: absolute;
-        border: 1px solid #dedede;
+        touch-action: none;
     }
 </style>

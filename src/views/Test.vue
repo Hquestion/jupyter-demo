@@ -1,15 +1,21 @@
 <template>
     <div class="test">
-        <Panel>
-            <Panel child-direction="horizontal">
-                <Panel :weight="2"></Panel>
-                <Panel :weight="1"></Panel>
+        <Panel child-direction="horizontal">
+            <Panel :init-width="20" :fixed="true">
+
             </Panel>
             <Panel>
-                <Panel :weight="2"></Panel>
-                <Panel :weight="1"></Panel>
-                <Panel :weight="1"></Panel>
+                <Panel child-direction="horizontal">
+                    <Panel :weight="2"></Panel>
+                    <Panel :weight="6" child-direction="vertical">
+                        <Panel></Panel>
+                        <Panel></Panel>
+                        <Panel :fixed="true" :init-height="20"></Panel>
+                    </Panel>
+                </Panel>
+                <Panel></Panel>
             </Panel>
+
         </Panel>
     </div>
 </template>

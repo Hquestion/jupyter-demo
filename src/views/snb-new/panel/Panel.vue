@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import emitter from '@sdx/utils/src/mixins/emitter';
+import emitter from '../../../mixins/emitter';
 import interact from 'interactjs';
 export default {
     name: 'ResizablePanel',
@@ -99,7 +99,22 @@ export default {
 
                         child.width = this.width;
                         if (!child.assigned) {
+                            this.childrenRatio = this.childrenRatio || [];
                             child.height = Math.max(child.minHeight, child.initHeight > -1 ? child.initHeight : canAssignedHeight * child.weight / total);
+                            this.childrenRatio.push(child.height);
+                            this.needTransform = true;
+                        } else {
+                            // 按比例分配resize的高度
+                            let hToAssign = this.height;
+                            children.forEach(item => {
+                                hToAssign -= item.fixed ? item.height : 0;
+                            });
+                            console.log(this.childrenRatio);
+                            if (child.fixed) {
+                                child.height = this.childrenRatio[index];
+                            } else {
+                                child.height = Math.max(child.minHeight, this.childrenRatio[index] * hToAssign);
+                            }
                         }
                         child.top = assigned;
                         child.left = 0;
@@ -123,7 +138,8 @@ export default {
                                 .on('resizemove', (e) => {
                                     let dist = e.rect.height - child.height;
                                     let height = nextChild.height - dist;
-                                    if (height > nextChild.minHeight && e.rect.height > this.minHeight) {
+                                    console.log(this.getPanelRealMinHeight())
+                                    if (height > nextChild.getPanelRealMinHeight() && e.rect.height > this.getPanelRealMinHeight()) {
                                         nextChild.height = nextChild.height - dist;
                                         nextChild.top = nextChild.top + dist;
 
@@ -174,6 +190,20 @@ export default {
                     }
 
                 });
+                if (this.childrenRatio && this.needTransform) {
+                    let heightExceptFixed = 0;
+                    children.forEach(item => {
+                        heightExceptFixed += item.fixed ? 0 : item.height;
+                    });
+                    this.childrenRatio = this.childrenRatio.map((item, index) => {
+                        if (children[index].fixed) {
+                            return item;
+                        }
+                        return item / heightExceptFixed;
+                    });
+                    this.needTransform = false;
+                }
+
             }
             requestAnimationFrame(() => {
                 this.resolve(true);
@@ -188,6 +218,25 @@ export default {
         },
         isRootPanel() {
             return !this.$parent || this.$parent.$options.componentName !== 'ResizablePanel';
+        },
+        getPanelRealMinHeight() {
+            if (this.$children.length > 0 && this.$children[0].$options.componentName === 'ResizablePanel') {
+                let childrenMinHeight = 0;
+                this.$children.forEach(item => {
+                    if (item.$children.length > 0 && item.$children[0].$options.componentName === 'ResizablePanel') {
+                        childrenMinHeight += item.getPanelRealMinHeight();
+                    } else {
+                        if (item.fixed) {
+                            childrenMinHeight += item.height;
+                        } else {
+                            childrenMinHeight += item.minHeight;
+                        }
+                    }
+                });
+                return childrenMinHeight;
+            } else {
+                return this.minHeight;
+            }
         }
     },
     updated() {
